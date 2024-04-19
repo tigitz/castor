@@ -13,7 +13,10 @@ final class SshRunner
     ) {
     }
 
-    /** @phpstan-param SshOptions $sshOptions */
+    /**
+     * @phpstan-param SshOptions $sshOptions
+     * @param null|resource|string|Process|\Traversable $input
+     */
     public function execute(
         string $command,
         ?string $path,
@@ -24,6 +27,7 @@ final class SshRunner
         ?bool $allowFailure = null,
         ?bool $notify = null,
         ?float $timeout = null,
+        mixed $input = null,
     ): Process {
         $ssh = $this->buildSsh($host, $user, $sshOptions);
 
@@ -31,7 +35,7 @@ final class SshRunner
             $command = sprintf('cd %s && %s', $path, $command);
         }
 
-        return $this->run($ssh->getExecuteCommand($command), $quiet, $allowFailure, $notify, $timeout);
+        return $this->run($ssh->getExecuteCommand($command), $quiet, $allowFailure, $notify, $timeout, $input);
     }
 
     /** @phpstan-param SshOptions $sshOptions */
@@ -68,12 +72,16 @@ final class SshRunner
         return $this->run($ssh->getDownloadCommand($sourcePath, $destinationPath), $quiet, $allowFailure, $notify, $timeout);
     }
 
+    /**
+     * @param null|resource|string|Process|\Traversable $input
+     */
     private function run(
         string $command,
         ?bool $quiet = null,
         ?bool $allowFailure = null,
         ?bool $notify = null,
         ?float $timeout = null,
+        mixed $input = null,
     ): Process {
         return $this->processRunner->run(
             $command,
@@ -83,7 +91,8 @@ final class SshRunner
             timeout: $timeout,
             quiet: $quiet,
             allowFailure: $allowFailure,
-            notify: $notify
+            notify: $notify,
+            input: $input
         );
     }
 

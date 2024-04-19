@@ -31,6 +31,7 @@ class ProcessRunner
      * @param string|array<string|\Stringable|int>           $command
      * @param array<string, string|\Stringable|int>|null     $environment
      * @param (callable(string, string, Process) :void)|null $callback
+     * @param null|resource|string|Process|\Traversable      $input
      */
     public function run(
         string|array $command,
@@ -44,6 +45,8 @@ class ProcessRunner
         ?bool $notify = null,
         ?callable $callback = null,
         ?Context $context = null,
+        mixed $input = null,
+        bool $immediateStart = true
     ): Process {
         $context ??= $this->contextRegistry->getCurrentContext();
 
@@ -83,6 +86,10 @@ class ProcessRunner
             $process = new Process($command, $context->workingDirectory, $context->environment, null, $context->timeout);
         } else {
             $process = Process::fromShellCommandline($command, $context->workingDirectory, $context->environment, null, $context->timeout);
+        }
+
+        if (null !== $input) {
+            $process->setInput($input);
         }
 
         // When quiet is set, it means we want to capture the output.
@@ -125,13 +132,14 @@ class ProcessRunner
 
         $this->sectionOutput->initProcess($process);
 
-        $process->start(function ($type, $bytes) use ($callback, $process) {
-            if ($callback) {
-                $callback($type, $bytes, $process);
-            }
-        });
-
-        $this->eventDispatcher->dispatch(new Event\ProcessStartEvent($process));
+        if ($immediateStart) {
+            $process->start(function ($type, $bytes) use ($callback, $process) {
+                $this->eventDispatcher->dispatch(new Event\ProcessStartEvent($process));
+                if ($callback) {
+                    $callback($type, $bytes, $process);
+                }
+            });
+        }
 
         if (\Fiber::getCurrent()) {
             while ($process->isRunning()) {
@@ -173,6 +181,7 @@ class ProcessRunner
     /**
      * @param string|array<string|\Stringable|int>       $command
      * @param array<string, string|\Stringable|int>|null $environment
+     * @param string|\Stringable|null                    $onFailure
      */
     public function capture(
         string|array $command,
@@ -180,7 +189,7 @@ class ProcessRunner
         ?string $workingDirectory = null,
         ?float $timeout = null,
         ?bool $allowFailure = null,
-        ?string $onFailure = null,
+        string|\Stringable|null $onFailure = null,
         ?Context $context = null,
     ): string {
         $hasOnFailure = null !== $onFailure;

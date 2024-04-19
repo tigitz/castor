@@ -46,6 +46,7 @@ function parallel(callable ...$callbacks): array
  * @param string|array<string|\Stringable|int>           $command
  * @param array<string, string|\Stringable|int>|null     $environment
  * @param (callable(string, string, Process) :void)|null $callback
+ * @param null|resource|string|Process|\Traversable      $input
  */
 function run(
     string|array $command,
@@ -60,6 +61,8 @@ function run(
     ?callable $callback = null,
     ?Context $context = null,
     ?string $path = null,
+    bool $immediateStart = true,
+    mixed $input = null,
 ): Process {
     if ($workingDirectory && $path) {
         throw new \LogicException('You cannot use both the "path" and "workingDirectory" arguments at the same time.');
@@ -82,6 +85,8 @@ function run(
         $notify,
         $callback,
         $context,
+        $input,
+        $immediateStart
     );
 }
 
@@ -162,15 +167,8 @@ function get_exit_code(...$args): int
 }
 
 /**
- * @param array{
- *     'port'?: int,
- *     'path_private_key'?: string,
- *     'jump_host'?: string,
- *     'multiplexing_control_path'?: string,
- *     'multiplexing_control_persist'?: string,
- *     'enable_strict_check'?: bool,
- *     'password_authentication'?: bool,
- * } $sshOptions
+ * @phpstan-param SshOptions $sshOptions
+ * @param null|resource|string|Process|\Traversable $input
  */
 function ssh_run(
     string $command,
@@ -182,8 +180,9 @@ function ssh_run(
     ?bool $allowFailure = null,
     ?bool $notify = null,
     ?float $timeout = null,
+    mixed $input = null,
 ): Process {
-    return Container::get()->sshRunner->execute($command, $path, $host, $user, $sshOptions, $quiet, $allowFailure, $notify, $timeout);
+    return Container::get()->sshRunner->execute($command, $path, $host, $user, $sshOptions, $quiet, $allowFailure, $notify, $timeout, $input);
 }
 
 /**
@@ -197,15 +196,7 @@ function ssh(...$args): Process
 }
 
 /**
- * @param array{
- *     'port'?: int,
- *     'path_private_key'?: string,
- *     'jump_host'?: string,
- *     'multiplexing_control_path'?: string,
- *     'multiplexing_control_persist'?: string,
- *     'enable_strict_check'?: bool,
- *     'password_authentication'?: bool,
- * } $sshOptions
+ * @phpstan-param SshOptions $sshOptions
  */
 function ssh_upload(
     string $sourcePath,
@@ -222,15 +213,7 @@ function ssh_upload(
 }
 
 /**
- * @param array{
- *     'port'?: int,
- *     'path_private_key'?: string,
- *     'jump_host'?: string,
- *     'multiplexing_control_path'?: string,
- *     'multiplexing_control_persist'?: string,
- *     'enable_strict_check'?: bool,
- *     'password_authentication'?: bool,
- * } $sshOptions
+ * @phpstan-param SshOptions $sshOptions
  */
 function ssh_download(
     string $sourcePath,
@@ -769,4 +752,38 @@ function open(string ...$urls): void
     }
 
     parallel(...$parallelCallbacks);
+}
+
+/**
+ * Pipes the output of one process to the input of the next.
+ *
+ * It requires at least two processes and ensures they execute in sequence. The last process's result is returned.
+ *
+ * Example usage:
+ * ```
+ * pipe(
+ *     run('echo "Hello, World!"'),
+ *     run('grep "World"'),
+ *     run('wc -c')
+ * );
+ * ```
+ * In this example, the string "Hello, World!" is passed through a grep filter searching for "World", and then the character
+ * count of the resulting output is calculated.
+ *
+ * @param Process ...$processes
+ * @return Process
+ */
+function pipe(Process ...$processes): Process
+{
+    $processCount = count($processes);
+    if ($processCount < 2) {
+        throw new \InvalidArgumentException('The pipe function requires at least two ' . Process::class . ' instances.');
+    }
+
+    for ($i = 0; $i < $processCount - 1; $i++) {
+        $processes[$i]->mustRun();
+        $processes[$i + 1]->setInput($processes[$i]->getOutput());
+    }
+
+    return $processes[$processCount - 1]->mustRun();
 }
