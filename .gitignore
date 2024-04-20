@@ -6,3 +6,4 @@
 /var/
 /vendor/
 /tests/Examples/fixtures/**/.castor.stub.php
+.aider*

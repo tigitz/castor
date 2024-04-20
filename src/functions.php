@@ -423,14 +423,19 @@ function get_cache(): CacheItemPoolInterface&CacheInterface
  *
  * @see HttpClientInterface::OPTIONS_DEFAULTS
  */
-function request(string $method, string $url, array $options = []): ResponseInterface
+function http_request(string $method, string $url, array $options = []): ResponseInterface
 {
-    return http_client()->request($method, $url, $options);
+    return Container::get()->httpHelper->http_request($method, $url, $options);
+}
+
+function http_download(string $url, ?string $filePath = null, string $method = 'GET', array $options = [], bool $stream = true): ResponseInterface
+{
+    return Container::get()->httpHelper->http_download($url, $filePath, $method, $options, $stream);
 }
 
 function http_client(): HttpClientInterface
 {
-    return Container::get()->httpClient;
+    return Container::get()->httpHelper->http_client();
 }
 
 /**
