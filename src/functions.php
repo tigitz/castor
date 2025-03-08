@@ -859,7 +859,7 @@ function encrypt_file_with_password(string $sourcePath, string $password, ?strin
 
     $encrypted = encrypt_with_password($content, $password);
 
-    $destinationPath ??= "{$sourcePath}.dec";
+    $destinationPath ??= "{$sourcePath}.enc";
     Container::get()->fs->dumpFile($destinationPath, $encrypted);
 
     $sourcePermissions = fileperms($sourcePath);
