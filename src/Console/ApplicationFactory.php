@@ -5,6 +5,7 @@ namespace Castor\Console;
 use Castor\Console\Command\CompileCommand;
 use Castor\Console\Command\DebugCommand;
 use Castor\Console\Command\RepackCommand;
+use Castor\Console\Command\RunMcpServerCommand;
 use Castor\Container;
 use Castor\Descriptor\DescriptorsCollection;
 use Castor\Event\AfterApplicationInitializationEvent;
@@ -191,6 +192,7 @@ class ApplicationFactory
 
             ->set(ErrorHandler::class)
                 ->synthetic()
+                
         ;
 
         $app = $services->set(Application::class, $repacked ? \RepackedApplication::class : null)
@@ -199,9 +201,12 @@ class ApplicationFactory
                     '$containerBuilder' => service(ContainerInterface::class),
                 ])
                 ->call('add', [service(DebugCommand::class)])
+                ->call('add', [service(RunMcpServerCommand::class)])
                 ->call('setDispatcher', [service(EventDispatcherInterface::class)])
                 ->call('setCatchErrors', [true])
         ;
+
+
         if (!$repacked) {
             $app
                 ->call('add', [service(RepackCommand::class)])

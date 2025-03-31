@@ -37,6 +37,7 @@
         "composer/composer": "^2.7.2",
         "jolicode/jolinotif": "^2.6.0",
         "jolicode/php-os-helper": "^0.1.0",
+        "logiscape/mcp-sdk-php": "^1.0",
         "monolog/monolog": "^3.5",
         "nikic/php-parser": "^4.19.1",
         "spatie/ssh": "^1.10.1",
